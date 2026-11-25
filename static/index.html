@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Local AI reader for Hacker News and Lobsters.">
+  <title>HN-Sage | Multi-Source RAG</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <h1><span class="logo">🔥</span> HN-Sage</h1>
+  </header>
+  <p class="subtitle">Hacker News + Lobsters, read + asked offline. Press <kbd>?</kbd> for shortcuts.</p>
+
+  <nav class="toolbar" aria-label="Feed selection">
+    <button data-feed="topstories" aria-pressed="true">Top</button>
+    <button data-feed="newstories" aria-pressed="false">New</button>
+    <button data-feed="beststories" aria-pressed="false">Best</button>
+    <button data-feed="askstories" aria-pressed="false">Ask</button>
+    <button data-feed="showstories" aria-pressed="false">Show</button>
+    <span class="spacer"></span>
+    <button id="reload" class="icon-btn" title="Reload current feed (R)">
+      <span aria-hidden="true">↻</span> Reload
+    </button>
+  </nav>
+
+  <div class="toolbar" style="margin-bottom: 8px;">
+    <button id="mode-keyword" aria-pressed="true" style="flex:1; font-size:0.85rem; padding:5px;">Keyword</button>
+    <button id="mode-semantic" aria-pressed="false" style="flex:1; font-size:0.85rem; padding:5px;">🔍 Semantic</button>
+    <button id="mode-ask" aria-pressed="false" style="flex:1; font-size:0.85rem; padding:5px;">🤖 Ask AI</button>
+  </div>
+
+  <div class="searchbar">
+    <input id="search" type="search"
+           placeholder="Filter loaded stories by title or author…"
+           aria-label="Search stories">
+    <button id="digest" class="icon-btn" title="Summarize today's top stories">
+      📝 Digest
+    </button>
+  </div>
+
+  <!-- NEW: Source Filters -->
+  <div class="toolbar" id="source-filters" style="margin-bottom: 14px;">
+    <button data-source="" aria-pressed="true" style="flex:1; font-size:0.85rem; padding:5px;">All Sources</button>
+    <button data-source="hn" aria-pressed="false" style="flex:1; font-size:0.85rem; padding:5px;">📰 HN</button>
+    <button data-source="lobsters" aria-pressed="false" style="flex:1; font-size:0.85rem; padding:5px;">🦞 Lobsters</button>
+  </div>
+
+  <main id="list" aria-live="polite" aria-busy="true"></main>
+
+  <div class="footer">
+    <span id="updated">—</span>
+    <span id="backend-status">Checking backend…</span>
+  </div>
+
+  <div class="shortcuts" id="shortcuts" role="dialog" aria-modal="true" aria-labelledby="sc-title">
+    <div class="shortcuts-inner">
+      <h2 id="sc-title">Keyboard shortcuts</h2>
+      <dl>
+        <dt>?</dt><dd>Toggle this panel</dd>
+        <dt>/</dt><dd>Focus search</dd>
+        <dt>r</dt><dd>Reload current feed</dd>
+        <dt>1–5</dt><dd>Switch feed</dd>
+        <dt>m</dt><dd>Cycle modes</dd>
+        <dt>d</dt><dd>Run digest</dd>
+        <dt>Esc</dt><dd>Clear search / close panel</dd>
+        <dt>Enter</dt><dd>Ask AI (in Ask mode)</dd>
+      </dl>
+      <div class="close">Press Esc or click outside to close.</div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

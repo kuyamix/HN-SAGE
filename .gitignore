@@ -1,0 +1,16 @@
+# Data & Models
+data/
+*.db
+*.db-wal
+*.db-shm
+*.faiss
+ids.json
+*.bak
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Environment
+.env
