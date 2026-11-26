@@ -7,6 +7,8 @@
   <meta name="description" content="Local AI reader for Hacker News and Lobsters.">
   <title>HN-Sage | Multi-Source RAG</title>
   <link rel="stylesheet" href="style.css">
+  <!-- NEW: Chart.js for Analytics Dashboard -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -31,9 +33,11 @@
     <button id="mode-keyword" aria-pressed="true" style="flex:1; font-size:0.85rem; padding:5px;">Keyword</button>
     <button id="mode-semantic" aria-pressed="false" style="flex:1; font-size:0.85rem; padding:5px;">🔍 Semantic</button>
     <button id="mode-ask" aria-pressed="false" style="flex:1; font-size:0.85rem; padding:5px;">🤖 Ask AI</button>
+    <!-- NEW: Analytics Button -->
+    <button id="mode-analytics" aria-pressed="false" style="flex:1; font-size:0.85rem; padding:5px;">📊 Analytics</button>
   </div>
 
-  <div class="searchbar">
+  <div class="searchbar" id="search-container">
     <input id="search" type="search"
            placeholder="Filter loaded stories by title or author…"
            aria-label="Search stories">
@@ -42,7 +46,6 @@
     </button>
   </div>
 
-  <!-- NEW: Source Filters -->
   <div class="toolbar" id="source-filters" style="margin-bottom: 14px;">
     <button data-source="" aria-pressed="true" style="flex:1; font-size:0.85rem; padding:5px;">All Sources</button>
     <button data-source="hn" aria-pressed="false" style="flex:1; font-size:0.85rem; padding:5px;">📰 HN</button>

@@ -15,10 +15,11 @@ def build_prompt(query, hits):
         context_parts.append("\n".join(block))
     context = "\n\n---\n\n".join(context_parts)
 
-    return f"""You are an analyst summarizing Hacker News and Lobsters stories.
-Use the provided context as your primary evidence.
-Cite every factual claim with [n] matching source numbers.
-Draw on as many distinct sources as possible.
+    return f"""You are a helpful AI assistant analyzing tech discussions.
+Use the provided context to answer the question.
+If the context does not contain the answer, say "I don't have enough information in the current stories to answer that."
+Do NOT invent facts. 
+Only cite sources [n] that are directly relevant to the user's question. Ignore irrelevant context.
 
 Context:
 {context}

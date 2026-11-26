@@ -1,7 +1,7 @@
 "use strict";
 
 const HN_API = "https://hacker-news.firebaseio.com/v0";
-const LOCAL_API = ""; // Relative path to the FastAPI backend
+const LOCAL_API = ""; 
 const LIMIT = 15;
 const FEED_LABELS = {
   topstories: "Top", newstories: "New", beststories: "Best",
@@ -10,8 +10,8 @@ const FEED_LABELS = {
 
 const currentFeed = { name: "topstories" };
 let loadedStories = [];
-let currentMode = "keyword"; // "keyword" | "semantic" | "ask"
-let currentSourceFilter = ""; // "" | "hn" | "lobsters"
+let currentMode = "keyword"; 
+let currentSourceFilter = ""; 
 const commentCache = new Map(); 
 const visited = new Set(
   JSON.parse(localStorage.getItem("hn_visited") || "[]")
@@ -21,6 +21,7 @@ const listContainer = document.getElementById("list");
 const updatedEl     = document.getElementById("updated");
 const statusEl      = document.getElementById("backend-status");
 const searchInput   = document.getElementById("search");
+const searchContainer = document.getElementById("search-container");
 const feedButtons   = document.querySelectorAll(".toolbar button[data-feed]");
 const sourceFilterButtons = document.querySelectorAll("#source-filters button");
 const reloadBtn     = document.getElementById("reload");
@@ -28,6 +29,7 @@ const digestBtn     = document.getElementById("digest");
 const btnKeyword    = document.getElementById("mode-keyword");
 const btnSemantic   = document.getElementById("mode-semantic");
 const btnAsk        = document.getElementById("mode-ask");
+const btnAnalytics  = document.getElementById("mode-analytics");
 const shortcutsEl   = document.getElementById("shortcuts");
 
 // ---------- Helpers ----------
@@ -88,7 +90,7 @@ function readURL() {
   const source = params.get("source");
   
   if (feed && FEED_LABELS[feed]) currentFeed.name = feed;
-  if (mode && ["keyword", "semantic", "ask"].includes(mode)) currentMode = mode;
+  if (mode && ["keyword", "semantic", "ask", "analytics"].includes(mode)) currentMode = mode;
   if (source) currentSourceFilter = source;
 }
 
@@ -294,26 +296,6 @@ function renderStories(stories, opts = {}) {
     `Updated ${new Date().toLocaleTimeString()} · ${FEED_LABELS[currentFeed.name] || currentFeed.name}`;
 }
 
-function renderAiAnswer(answer, sources) {
-  listContainer.innerHTML = "";
-  listContainer.setAttribute("aria-busy", "false");
-
-  const answerBox = el("div", { class: "ai-answer" });
-  answerBox.appendChild(el("strong", {}, "🤖 AI Answer"));
-  const body = el("div", {});
-  body.style.whiteSpace = "pre-wrap";
-  body.textContent = answer; 
-  answerBox.appendChild(body);
-  listContainer.appendChild(answerBox);
-
-  if (sources.length) {
-    listContainer.appendChild(el("h3", {
-      style: "font-size:0.95rem;margin:16px 0 8px;color:var(--muted)"
-    }, `Sources (${sources.length}):`));
-    sources.forEach((s, i) => listContainer.appendChild(renderStory(s, i + 1)));
-  }
-}
-
 async function runAskStreaming(query) {
   renderLoading("Thinking locally…");
   const answerBox = el("div", { class: "ai-answer" });
@@ -415,33 +397,102 @@ async function runSemantic(q) {
   }
 }
 
+// ---------- Analytics Mode ----------
+async function loadAnalytics() {
+  renderLoading("Loading Analytics...");
+  
+  try {
+    const res = await fetch(`${LOCAL_API}/analytics`);
+    if (!res.ok) throw new Error(`Server returned ${res.status}`);
+    const data = await res.json();
+    
+    listContainer.innerHTML = `
+      <div style="padding: 20px;">
+        <h2 style="margin-bottom: 20px;">📊 Data Warehouse Insights</h2>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
+            <h3 style="font-size: 1rem; margin-bottom: 15px;">Stories by Source</h3>
+            <canvas id="sourceChart"></canvas>
+          </div>
+          
+          <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
+            <h3 style="font-size: 1rem; margin-bottom: 15px;">Top Authors by Score</h3>
+            <canvas id="authorChart"></canvas>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Render Chart.js
+    new Chart(document.getElementById('sourceChart'), {
+      type: 'doughnut',
+      data: {
+        labels: data.sources.map(s => s.source_name.toUpperCase()),
+        datasets: [{
+          data: data.sources.map(s => s.count),
+          backgroundColor: ['#ff6600', '#d33636', '#3b82f6']
+        }]
+      }
+    });
+
+    new Chart(document.getElementById('authorChart'), {
+      type: 'bar',
+      data: {
+        labels: data.top_authors.map(a => a.username),
+        datasets: [{
+          label: 'Total Score',
+          data: data.top_authors.map(a => a.total_score),
+          backgroundColor: '#3b82f6'
+        }]
+      },
+      options: { indexAxis: 'y' }
+    });
+
+  } catch (err) {
+    renderError(err.message, true);
+  }
+}
+
+// ---------- Modes ----------
 function setMode(mode) {
   currentMode = mode;
   syncURL();
+  
   btnKeyword.setAttribute("aria-pressed", mode === "keyword" ? "true" : "false");
   btnSemantic.setAttribute("aria-pressed", mode === "semantic" ? "true" : "false");
   btnAsk.setAttribute("aria-pressed", mode === "ask" ? "true" : "false");
+  btnAnalytics.setAttribute("aria-pressed", mode === "analytics" ? "true" : "false");
 
-  if (mode === "keyword") {
-    searchInput.placeholder = "Filter loaded stories by title or author…";
-    renderStories(loadedStories, { silentEmpty: true });
-  } else if (mode === "semantic") {
-    searchInput.placeholder = "Search by meaning (e.g. \"vector databases\")…";
-    listContainer.innerHTML = "";
-    listContainer.appendChild(el("div",
-      { style: "padding:40px;text-align:center;color:var(--muted)" },
-      "Type a query and press Enter to search the local index."));
+  if (mode === "analytics") {
+    searchContainer.style.display = "none"; // Hide search bar for dashboard
+    loadAnalytics();
   } else {
-    searchInput.placeholder = "Ask a question about the ingested stories…";
-    listContainer.innerHTML = "";
-    listContainer.appendChild(el("div",
-      { style: "padding:40px;text-align:center;color:var(--muted)" },
-      "Type a question and press Enter."));
+    searchContainer.style.display = "flex"; // Show search bar for other modes
+    
+    if (mode === "keyword") {
+      searchInput.placeholder = "Filter loaded stories by title or author…";
+      renderStories(loadedStories, { silentEmpty: true });
+    } else if (mode === "semantic") {
+      searchInput.placeholder = "Search by meaning (e.g. \"vector databases\")…";
+      listContainer.innerHTML = "";
+      listContainer.appendChild(el("div",
+        { style: "padding:40px;text-align:center;color:var(--muted)" },
+        "Type a query and press Enter to search the local index."));
+    } else {
+      searchInput.placeholder = "Ask a question about the ingested stories…";
+      listContainer.innerHTML = "";
+      listContainer.appendChild(el("div",
+        { style: "padding:40px;text-align:center;color:var(--muted)" },
+        "Type a question and press Enter."));
+    }
+    searchInput.focus();
   }
-  searchInput.focus();
 }
 
 async function loadStories(feed) {
+  if (currentMode === "analytics") setMode("keyword");
+  
   currentFeed.name = feed;
   syncURL();
   feedButtons.forEach(b =>
@@ -493,7 +544,6 @@ sourceFilterButtons.forEach(btn => {
       b.setAttribute("aria-pressed", b.dataset.source === currentSourceFilter ? "true" : "false"));
     syncURL();
     
-    // Re-trigger the current view
     if (currentMode === "semantic" && searchInput.value.trim()) {
       runSemantic(searchInput.value.trim());
     } else if (currentMode === "keyword") {
@@ -507,6 +557,7 @@ digestBtn.addEventListener("click", runDigest);
 btnKeyword.addEventListener("click", () => setMode("keyword"));
 btnSemantic.addEventListener("click", () => setMode("semantic"));
 btnAsk.addEventListener("click", () => setMode("ask"));
+btnAnalytics.addEventListener("click", () => setMode("analytics"));
 
 let debounce;
 searchInput.addEventListener("input", () => {
@@ -554,7 +605,7 @@ document.addEventListener("keydown", e => {
   } else if (e.key === "/") {
     e.preventDefault(); searchInput.focus();
   } else if (e.key === "m") {
-    const order = ["keyword", "semantic", "ask"];
+    const order = ["keyword", "semantic", "ask", "analytics"];
     setMode(order[(order.indexOf(currentMode) + 1) % order.length]);
   } else if (e.key === "d") {
     runDigest();
@@ -569,11 +620,15 @@ readURL();
 renderSkeleton();
 checkBackend();
 
-// Sync the UI buttons with the URL state on load
 sourceFilterButtons.forEach(b => 
   b.setAttribute("aria-pressed", b.dataset.source === currentSourceFilter ? "true" : "false"));
 btnKeyword.setAttribute("aria-pressed", currentMode === "keyword" ? "true" : "false");
 btnSemantic.setAttribute("aria-pressed", currentMode === "semantic" ? "true" : "false");
 btnAsk.setAttribute("aria-pressed", currentMode === "ask" ? "true" : "false");
+btnAnalytics.setAttribute("aria-pressed", currentMode === "analytics" ? "true" : "false");
 
-loadStories(currentFeed.name);
+if (currentMode === "analytics") {
+  setMode("analytics");
+} else {
+  loadStories(currentFeed.name);
+}

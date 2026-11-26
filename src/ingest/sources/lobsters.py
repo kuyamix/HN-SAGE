@@ -15,11 +15,23 @@ class LobstersAdapter:
     id = "lobsters"
 
     def fetch_ids(self, limit: int) -> list[str]:
-        log.info("Fetching hottest ids from Lobsters…")
-        r = requests.get(f"{BASE}/hottest.json", headers=HEADERS, timeout=10)
-        r.raise_for_status()
-        # Lobsters returns the full story list in one go. We just grab the short_ids.
-        return [s["short_id"] for s in r.json()[:limit]]
+        log.info(f"Fetching {limit} ids from Lobsters (paginated)…")
+        ids = []
+        page = 1
+        while len(ids) < limit:
+            r = requests.get(f"{BASE}/hottest.json?page={page}", headers=HEADERS, timeout=10)
+            if r.status_code != 200:
+                break
+            
+            stories = r.json()
+            if not stories: # No more stories left
+                break
+                
+            ids.extend([s["short_id"] for s in stories])
+            page += 1
+            time.sleep(0.5) # Be polite between pages
+            
+        return ids[:limit]
 
     def fetch_doc(self, native_id: str) -> RawDoc | None:
         try:
@@ -68,11 +80,14 @@ class LobstersAdapter:
 
 
 # --- Add this block so you can run it directly ---
+# src/ingest/sources/lobsters.py
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     
     adapter = LobstersAdapter()
-    ids = adapter.fetch_ids(limit=50)
+    # Change this from limit=25 to limit=100
+    ids = adapter.fetch_ids(limit=100) 
     
     docs = []
     for i, native_id in enumerate(ids, 1):
@@ -80,7 +95,7 @@ if __name__ == "__main__":
         doc = adapter.fetch_doc(native_id)
         if doc:
             docs.append(doc)
-        time.sleep(0.5) # Be polite to their API
+        time.sleep(0.5)
         
     log.info(f"Handing {len(docs)} Lobsters docs to orchestrator...")
     ingest_docs(docs)

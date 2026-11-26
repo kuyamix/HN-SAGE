@@ -29,8 +29,8 @@ LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.deepseek.com/v1")
 LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-chat")
 
 # Ingestion Settings
-INGEST_LIMIT = int(os.getenv("INGEST_LIMIT", "100"))
-COMMENTS_PER_STORY = int(os.getenv("COMMENTS_PER_STORY", "5"))
+INGEST_LIMIT = int(os.getenv("INGEST_LIMIT", "300"))
+COMMENTS_PER_STORY = int(os.getenv("COMMENTS_PER_STORY", "10"))
 HN_DEPTH = int(os.getenv("HN_COMMENT_DEPTH", "1"))
 PRUNE_REBUILD_THRESHOLD = float(os.getenv("PRUNE_REBUILD_THRESHOLD", "0.05"))
 
