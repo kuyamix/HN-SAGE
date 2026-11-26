@@ -24,12 +24,12 @@ class LobstersAdapter:
                 break
             
             stories = r.json()
-            if not stories: # No more stories left
+            if not stories: 
                 break
                 
             ids.extend([s["short_id"] for s in stories])
             page += 1
-            time.sleep(0.5) # Be polite between pages
+            time.sleep(0.5)
             
         return ids[:limit]
 
@@ -41,8 +41,6 @@ class LobstersAdapter:
             s = r.json()
             
             comments = self._flatten_comments(s.get("comments", []))
-            
-            # Lobsters uses ISO 8601 strings for dates. We convert to Unix timestamp.
             dt = datetime.fromisoformat(s["created_at"].replace("Z", "+00:00"))
             
             return RawDoc(
@@ -57,14 +55,13 @@ class LobstersAdapter:
                 published_at=int(dt.timestamp()),
                 text=html_to_text(s.get("description", "")),
                 extra={"tags": s.get("tags", [])},
-                comments=comments[:5], # Keep top 5 to match HN
+                comments=comments[:5],
             )
         except Exception as e:
             log.warning(f"Failed to fetch Lobsters doc {native_id}: {e}")
             return None
 
     def _flatten_comments(self, tree, depth=0, out=None):
-        """Lobsters comments are nested JSON. We flatten them into a list."""
         if out is None: out = []
         for c in tree:
             if c.get("commenting_user"):
@@ -78,25 +75,24 @@ class LobstersAdapter:
             self._flatten_comments(c.get("comments", []), depth+1, out)
         return out
 
-
-# --- Add this block so you can run it directly ---
-# src/ingest/sources/lobsters.py
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    
+def run_lobsters_ingest(limit=25):
+    """Reusable function for background tasks and CLI."""
     adapter = LobstersAdapter()
-    # Change this from limit=25 to limit=100
-    ids = adapter.fetch_ids(limit=100) 
-    
+    ids = adapter.fetch_ids(limit)
     docs = []
-    for i, native_id in enumerate(ids, 1):
-        log.info(f"Fetching Lobsters doc {i}/{len(ids)}...")
+    for native_id in ids:
         doc = adapter.fetch_doc(native_id)
         if doc:
             docs.append(doc)
         time.sleep(0.5)
-        
-    log.info(f"Handing {len(docs)} Lobsters docs to orchestrator...")
-    ingest_docs(docs)
-    log.info("Lobsters ingestion complete!")
+    
+    if docs:
+        ingest_docs(docs)
+        return len(docs)
+    return 0
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    log.info("Starting Lobsters ingestion...")
+    count = run_lobsters_ingest(limit=50)
+    log.info(f"Finished ingesting {count} Lobsters docs.")

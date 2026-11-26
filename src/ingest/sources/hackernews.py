@@ -46,7 +46,7 @@ class HackerNewsAdapter:
     id = "hn"
 
     def fetch_ids(self, limit: int) -> list[str]:
-        log.info("Fetching topstories ids…")
+        log.info(f"Fetching topstories ids…")
         ids = fetch_json(f"{BASE}/topstories.json")[:limit]
         return [str(i) for i in ids]
 
@@ -73,22 +73,24 @@ class HackerNewsAdapter:
             comments=fetch_comments(item),
         )
 
-# --- ADD THIS BLOCK AT THE BOTTOM ---
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    log.info("Starting HN ingestion...")
-    
+def run_hn_ingest(limit=20):
+    """Reusable function for background tasks and CLI."""
     adapter = HackerNewsAdapter()
-    ids = adapter.fetch_ids(INGEST_LIMIT)
-    
+    ids = adapter.fetch_ids(limit)
     docs = []
-    for i, native_id in enumerate(ids, 1):
-        log.info(f"Fetching doc {i}/{len(ids)}...")
+    for native_id in ids:
         doc = adapter.fetch_doc(native_id)
         if doc:
             docs.append(doc)
-        time.sleep(0.05) # Be polite to the API
-        
-    log.info(f"Handing {len(docs)} docs to orchestrator...")
-    ingest_docs(docs)
-    log.info("Ingestion complete!")
+        time.sleep(0.05)
+    
+    if docs:
+        ingest_docs(docs)
+        return len(docs)
+    return 0
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    log.info("Starting HN ingestion...")
+    count = run_hn_ingest(limit=INGEST_LIMIT)
+    log.info(f"Finished ingesting {count} HN docs.")
